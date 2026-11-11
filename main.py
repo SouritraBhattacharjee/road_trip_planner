@@ -29,13 +29,23 @@ from drafter import (
     Argument, Header, Div, Span, Link, RawHTML, Details, NumberedList,
     add_website_css, add_website_header, set_website_title,
     set_website_framed, set_website_style, set_page_transition,
-    set_state_display, assert_equal,
+    set_state_display, assert_equal, set_site_information, hide_debug_information
 )
 
+set_website_title("Road Trip Planner")
+set_site_information(
+    author="Souritra Bhattacharjee",
+    description="Plan efficient road trips and estimate costs.",
+    sources="Thanks to the Drafter library and Claude.",
+    planning = "Brainstorm and design documents in repository",
+    links=["https://github.com/SouritraBhattacharjee/road_trip_planner"]
+)
+hide_debug_information()
+set_website_framed(False)
 # ---------------------------------------------------------------------------
 # Global CONSTANTS (allowed; never reassigned)
 # ---------------------------------------------------------------------------
-MIN_STOPS = 2
+MIN_STOPS = 1
 GOOGLE_MAPS_URL = "https://www.google.com/maps"
 DECIMALS = 1  # decimal places shown when displaying distances
 MILES_PER_DEGREE = 69.0  # miles per degree of latitude (and of longitude
@@ -85,7 +95,7 @@ GOOGLE_FONT_LINK = (
     'wght@400;600;800&display=swap" rel="stylesheet">'
 )
 
-# The whole site design. This is plain CSS text that Drafter adds to the page.
+# The whole site design. This is plain CSS text that Drafter adds to the page (Advanced coding technique used by LLM)
 THEME_CSS = """
 :root { --cyan:#22d3ee; --violet:#8b5cf6; --pink:#f472b6; --green:#34d399;
   --text:#e9edfb; --muted:#9aa5c8; --glass:rgba(255,255,255,.06);
@@ -1293,7 +1303,7 @@ def remove_stop(state: State, stop_name: str) -> Page:
 def calculate_route(state: State) -> Page:
     """Run the brute-force search and go to the results page."""
     if len(state.stops) < MIN_STOPS:
-        state.message = f"Add at least {MIN_STOPS} stops first."
+        state.message = f"Add at least {MIN_STOPS} stop(s) first."
         return stops_page(state)
     state.best_route, state.best_distance = find_best_route(
         state.home, state.stops)
@@ -1531,6 +1541,9 @@ def test_route_finding() -> None:
     assert_equal(corner in best_order, True)
     assert_equal(len(best_order), 3)
 
+    # find_best_route with one stop: the trip is Home -> stop -> Home
+    assert_equal(find_best_route(home, [east]), ([east], 138.0))
+
     # leg_distances: one more leg than stops
     legs = leg_distances(home, [east, corner, north])
     assert_equal(len(legs), 4)
@@ -1662,11 +1675,17 @@ def test_routes() -> None:
     set_home(state, "Bad", "x", "3")
     assert_equal(state.home, Location("Newark", 39.68, -75.75))
 
-    # calculate_route: too few stops, then success
+    # calculate_route: no stops fails, one stop works (Home -> stop -> Home)
     state = new_state()
-    add_stop(state, "A", "0", "1")
     calculate_route(state)
     assert_equal(state.best_route, [])
+    assert_equal(state.message, "Add at least 1 stop(s) first.")
+    add_stop(state, "A", "0", "1")
+    calculate_route(state)
+    assert_equal(len(state.best_route), 1)
+    assert_equal(state.best_distance, 138.0)
+
+    # two stops also work
     add_stop(state, "B", "1", "0")
     calculate_route(state)
     assert_equal(len(state.best_route), 2)
